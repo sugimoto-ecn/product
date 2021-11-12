@@ -1,8 +1,21 @@
 import RPi.GPIO as GPIO
+from controller import lcd_clock_controller , active_buzzer_controller
+from models import btn
 import time
 from LCD1602I2C.LCD import LCD
+from utils import time_format
 
 
+BUZZER_PIN = 16
+alerm=False
+buzzer_status=False
+SERVO_PIN=18
+BTN_PIN=21
+ALERM_TIME="13:57:30"
+
+active = active_buzzer_controller.ActiveBuzzerController(BUZZER_PIN)
+clock = lcd_clock_controller.ClockController(ALERM_TIME)
+button = btn.Btn(BTN_PIN)
 
 class Keypad():
 
@@ -27,10 +40,10 @@ class Keypad():
         return pressed_keys
 
 class Servo():
-    def __init__(self, pin):
+    def __init__(self):
         self.SERVO_MIN_PULSE = 500
         self.SERVO_MAX_PULSE = 2500
-        self.pin = 13
+        self.pin = 18
 
     def map(self, value, inMin, inMax, outMin, outMax):
         return (outMax - outMin) * (value - inMin) / (inMax - inMin) + outMin
@@ -59,10 +72,9 @@ class Servo():
             self.setAngle(i)
             time.sleep(0.001)
 
-################ EXAMPLE CODE START HERE ################
 LENS = 4
 password=['1','9','8','4']
-testword=['','','','']
+testword=['?','?','?','?']
 keyIndex=0
 
 def check():
@@ -75,7 +87,7 @@ def check():
 
 def setup():
     global keypad, last_key_pressed
-    rowsPins = [18,23,24,25]
+    rowsPins = [14,23,24,25]
     colsPins = [10,22,27,17]
     keys = ["1","2","3","A",
             "4","5","6","B",
@@ -94,12 +106,11 @@ def destroy():
     GPIO.cleanup()
 
 
-servo = Servo(13)
+servo = Servo()
 status = False
 def swServo(val):
     global servo
     global status
-    print(status)
     print(val)
     if not status and val:
         servo.rock()
@@ -112,6 +123,7 @@ def loop():
     global LENS
     global servo
     global status
+    global alerm
     global keypad, last_key_pressed
     lcd = LCD(2,0x27,True)
     servo.setup()
@@ -122,9 +134,36 @@ def loop():
     GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP) 
     # GPIO.add_event_detect(BUTTON_PIN, GPIO.FALLING, callback=swServo)
     while(True):
+        current_time = time_format.current_time_format()
         pressed_keys = keypad.read()
+        print('########')
+        print(ALERM_TIME)
+        print(current_time["hms"])
+        print('########')
+        if ALERM_TIME==current_time["hms"]:
+            button.init_status()
+            alerm = True
+            print("alerm") 
+            servo.unrock()
+            
+
+        if not buzzer_status and alerm:
+            # print("on")
+            active.on()
+            if button.status:
+                alerm=False
+        elif not alerm:
+            # print('off')
+            active.off()
+    
+        if testword[0] == "?":
+            if button.status:
+                clock.show_current_time()
+            else:
+                clock.show_alerm_time()
+
         if GPIO.input(BUTTON_PIN) == GPIO.HIGH:
-            # print('hin')
+
             swServo(False)
         else:
             print('yaa')
@@ -141,16 +180,20 @@ def loop():
                     lcd.clear()
                     lcd.message("WRONG KEY!", 1)
                     lcd.message("please try again", 2)
-                    testword[0]=""
-                    testword[1]=""
-                    testword[2]=""
-                    testword[3]=""
+                    testword[0]="?"
+                    testword[1]="?"
+                    testword[2]="?"
+                    testword[3]="?"
                     servo.rock()
                 else:
                     lcd.clear()
                     lcd.message("CORRECT!", 1)
                     lcd.message("welcome back", 2)
                     servo.unrock()
+                    testword[0]="?"
+                    testword[1]="?"
+                    testword[2]="?"
+                    testword[3]="?"
             keyIndex=keyIndex%LENS
 
         last_key_pressed = pressed_keys

@@ -2,8 +2,6 @@ import RPi.GPIO as GPIO
 import time
 from LCD1602I2C.LCD import LCD
 
-##################### HERE IS THE KEYPAD LIBRARY TRANSPLANTED FROM Arduino ############
-#class Key:Define some of the properties of Key
 class Keypad():
 
     def __init__(self, rowsPins, colsPins, keys):
@@ -26,7 +24,6 @@ class Keypad():
             GPIO.output(row, GPIO.LOW)
         return pressed_keys
 
-################ EXAMPLE CODE START HERE ################
 LENS = 4
 password=['1','9','8','4']
 testword=['','','','']
@@ -42,7 +39,7 @@ def check():
 
 def setup():
     global keypad, last_key_pressed
-    rowsPins = [18,23,24,25]
+    rowsPins = [14,23,24,25]
     colsPins = [10,22,27,17]
     keys = ["1","2","3","A",
             "4","5","6","B",
@@ -50,7 +47,7 @@ def setup():
             "*","0","#","D"]
     keypad = Keypad(rowsPins, colsPins, keys)
     last_key_pressed = []
-    lcd = LCD(2,0x27,True)   # init(slave address, background light)
+    lcd = LCD(2,0x27,True)
     lcd.clear()
     lcd.message('WELCOME!',1)
     lcd.message('Enter password',2)
