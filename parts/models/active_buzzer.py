@@ -13,10 +13,24 @@ class ActiveBuzzer(object):
 
     def alerm(self):
         self.status = self.on
+        GPIO.setmode(GPIO.BCM)
         GPIO.output(self.pin , self.status)
+        # count = 0
+        # while True:
+        # # Buzzer on (Beep)
+        #     GPIO.output(self.pin , GPIO.LOW)
+        #     time.sleep(0.08)
+        #     # Buzzer off
+        #     GPIO.output(self.pin , GPIO.HIGH)
+        #     time.sleep(0.1)
+        #     if count >= 4:
+        #         time.sleep(0.5)
+        #         count = 0
+
 
     def stop(self):
         self.status = self.off
+        GPIO.setmode(GPIO.BCM)
         GPIO.output(self.pin, self.status)
     
     def __del__(self):

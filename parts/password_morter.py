@@ -11,7 +11,7 @@ alerm=False
 buzzer_status=False
 SERVO_PIN=18
 BTN_PIN=21
-ALERM_TIME="13:57:30"
+ALERM_TIME="08:45:30"
 
 active = active_buzzer_controller.ActiveBuzzerController(BUZZER_PIN)
 clock = lcd_clock_controller.ClockController(ALERM_TIME)
