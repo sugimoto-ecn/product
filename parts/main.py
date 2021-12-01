@@ -158,7 +158,8 @@ def show_display():
             if button.status:
                 clock.show_current_time()
             else:
-                night = clock.show_time() 
+                # night = clock.show_time() 
+                night = clock.show_alerm_time()
 
         #未ログイン ＋ 入力中
         if user_info == None and input_value_1[0] != "?":
@@ -182,6 +183,8 @@ def set_user():
     response = requests.post(url+'/users/product',json={
         'id':id
     })
+    print(response.text)
+    print('*******')
     datas = json.loads(response.text)
     if "email" not in datas["user"]:
         input_value_1[0]="?"
@@ -269,18 +272,41 @@ def buzzer_func():
 
 def update_info():
     global user_info
+    status = False
     while True:
+        # if status != True and user_info != None:
+        #     user_info_thread = threading.Thread(target=set_user)
+        #     user_info_thread.start()
+        #     status = True
+
         if user_info != None:
             # get_user()
-            print('uaa')
+            print('--------')
+            set_user()
+            response = requests.get(url+'/sleep/'+ str(user_info["user_id"]) +'/get',
+            params = {
+            })
+            print(response.text)
         time.sleep(60 * 60)
 
-def update_sleep():
+def post_sleep():
     global user_info
     time = datetime.datetime.now()
+    print(time)
     response = requests.post(url+'/sleep/create',json={
         "type":"sleep",
-        "value":time,
+        # "value":time,
+        "user_id":user_info["user_id"]
+    })
+    datas = json.loads(response.text)
+
+def post_wakeup():
+    global user_info
+    time = datetime.datetime.now()
+    print(time)
+    response = requests.post(url+'/sleep/create',json={
+        "type":"wakeup",
+        # "value":time,
         "user_id":user_info["user_id"]
     })
     datas = json.loads(response.text)
@@ -327,14 +353,12 @@ def loop():
                 keyIndex+=1
             if (keyIndex is LENS2):
                 if (check(password, input_value_2,LENS2 ) is 1):
-                    # set_user()
-                    print('o-----l-----')
-                    print(is_close)
                     if is_close == False:
-                        update_sleep()
+                        post_sleep()
                         servo.rock()
                         is_close = True
                     else:
+                        post_wakeup()
                         servo.unrock()
                         is_close = False
                 input_value_2[0]="?"
