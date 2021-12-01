@@ -6,11 +6,12 @@ from models import btn
 import time
 import pigpio
 import json
+import datetime;
 from LCD1602I2C.LCD import LCD
 from controller import lcd_clock_controller , active_buzzer_controller
 
-
-
+# mkmkm
+#
 
 class Servo():
     
@@ -85,18 +86,21 @@ input_value_2 = ['?', '?', '?', '?']
 product_id = ['1', '1', '1', '1','1', '1', '1', '1']
 password = [0, 0, 0, 0]
 alerm_time = "**:**:**"
+sleep_time = "**:**:**"
 BTN_PIN=21
 LED_PIN = 20
-clock = lcd_clock_controller.ClockController(alerm_time)
+clock = lcd_clock_controller.ClockController(alerm_time, sleep_time)
 button = btn.Btn(BTN_PIN)
 keypad = None
 last_key_pressed = None
 alerm=False
-url = 'http://35.74.101.128/v1'
+url = 'https://www.tomomin-dev.link/v1'
 user_info = None
 SERVO_PIN=18
 servo = Servo()
 is_close = False
+is_sleeping = False
+id = None
 
 
 
@@ -136,26 +140,32 @@ def setup_key():
 モニター関連
 """
 def show_display():
-    global keypad, last_key_pressed
+    global keypad, last_key_pressed,is_sleeping
     while True:
         # lcd.clear()  
         current_time = time_format.current_time_format()
         pressed_keys = keypad.read()
+        
+        #未ログイン + 入力値なし
         if user_info == None and input_value_1[0] == "?":
             if button.status:
                 clock.show_current_time()
             else:
                 lcd.message("", 2)
                 lcd.message("Enter productId:", 1)
+        #ログイン　＋　入力値なし
         if user_info != None and input_value_2[0] == "?":
             if button.status:
                 clock.show_current_time()
             else:
-                clock.show_alerm_time() 
+                night = clock.show_time() 
+
+        #未ログイン ＋ 入力中
         if user_info == None and input_value_1[0] != "?":
             lcd.message("Enter id:", 1)
             lcd.message("".join(input_value_1), 2)
 
+        #ログイン　＋　入力中
         if input_value_2[0] != "?":
             lcd.message("Enter password:", 1)
             lcd.message("".join(input_value_2), 2) 
@@ -166,12 +176,12 @@ def show_display():
 ユーザー情報取得＋格納
 """
 def set_user():
-    global user_info, alerm_time, password,url,input_value_1,servo
+    global user_info, alerm_time, password,url,input_value_1,servo,id
+    if(input_value_1[0] != "?"):
+        id = "".join(input_value_1)
     response = requests.post(url+'/users/product',json={
-        'id':"".join(input_value_1)
+        'id':id
     })
-    print('&&&&&&&&&&')
-    print(response.text)
     datas = json.loads(response.text)
     if "email" not in datas["user"]:
         input_value_1[0]="?"
@@ -184,17 +194,22 @@ def set_user():
         input_value_1[7]="?"
         return
     user_info = {
+        "user_id":datas["user"]["id"],
         "name":datas["user"]["email"],
         "alerm":datas["schedule"][0]["wakeup"],
+        "sleep":datas["schedule"][0]["sleep"],
         "password":"1111"
     }
+    print(user_info)
     alerm_time = user_info["alerm"]
+    sleep_time = user_info["sleep"]
     password[0] = user_info["password"][0]
     password[1] = user_info["password"][1]
     password[2] = user_info["password"][2]
     password[3] = user_info["password"][3]
 
     clock.change_alerm(alerm_time)
+    clock.change_seep(sleep_time)
     # response = requests.get(url,
     # params = {
     # 'api_key': api_key,
@@ -202,9 +217,11 @@ def set_user():
     # })
     # user_info = response
 
+
+"""
+パスワード入力チェック
+"""
 def check(target, value, LENS):
-    print("password",target)
-    print("testword",value)
     for i in range(0,LENS):
         if(target[i]!=value[i]):
             return 0
@@ -254,8 +271,19 @@ def update_info():
     global user_info
     while True:
         if user_info != None:
-            get_user()
-        time.sleep(6*60)
+            # get_user()
+            print('uaa')
+        time.sleep(60 * 60)
+
+def update_sleep():
+    global user_info
+    time = datetime.datetime.now()
+    response = requests.post(url+'/sleep/create',json={
+        "type":"sleep",
+        "value":time,
+        "user_id":user_info["user_id"]
+    })
+    datas = json.loads(response.text)
 
     
 """
@@ -281,7 +309,7 @@ def loop():
     user_info_thread.start()
 
     servo.setup()
-
+    servo.unrock()
     while True:
         if user_info == None:
             pressed_keys = keypad.read()
@@ -290,7 +318,7 @@ def loop():
                 keyIndex+=1
             if (keyIndex is LENS1):
                 set_user()
-                servo.rock()
+                # servo.rock()
             keyIndex=keyIndex%LENS1
         else:
             pressed_keys = keypad.read()
@@ -300,18 +328,25 @@ def loop():
             if (keyIndex is LENS2):
                 if (check(password, input_value_2,LENS2 ) is 1):
                     # set_user()
-                    servo.unrock()
-                    is_close = True
+                    print('o-----l-----')
+                    print(is_close)
+                    if is_close == False:
+                        update_sleep()
+                        servo.rock()
+                        is_close = True
+                    else:
+                        servo.unrock()
+                        is_close = False
                 input_value_2[0]="?"
                 input_value_2[1]="?"
                 input_value_2[2]="?"
                 input_value_2[3]="?"
             keyIndex=keyIndex%LENS2
 
-            if is_close == True:
-                if button.status:
-                    is_close = False
-                    servo.rock()
+            # if is_close == True:
+            #     if button.status:
+            #         is_close = False
+            #         servo.rock()
         last_key_pressed = pressed_keys
         time.sleep(0.1)
 
