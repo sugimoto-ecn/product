@@ -10,7 +10,7 @@ import datetime;
 from LCD1602I2C.LCD import LCD
 from controller import lcd_clock_controller , active_buzzer_controller
 
-# mkmkm
+#mkmkm
 #
 
 class Servo():
@@ -89,6 +89,7 @@ alerm_time = "**:**:**"
 sleep_time = "**:**:**"
 BTN_PIN=21
 LED_PIN = 20
+
 clock = lcd_clock_controller.ClockController(alerm_time, sleep_time)
 button = btn.Btn(BTN_PIN)
 keypad = None
@@ -114,7 +115,7 @@ def set_alerm():
         })
         print(response.json)
         alerm_time = response.json
-        time.sleep(60*6)
+        time.sleep(60 * 60)
 
 
 """
@@ -196,13 +197,22 @@ def set_user():
         input_value_1[6]="?"
         input_value_1[7]="?"
         return
-    user_info = {
-        "user_id":datas["user"]["id"],
-        "name":datas["user"]["email"],
-        "alerm":datas["schedule"][0]["wakeup"],
-        "sleep":datas["schedule"][0]["sleep"],
-        "password":"1111"
-    }
+    if datas["schedule"] != {}:
+        user_info = {
+            "user_id":datas["user"]["id"],
+            "name":datas["user"]["email"],
+            "alerm":datas["schedule"][0]["wakeup"],
+            "sleep":datas["schedule"][0]["sleep"],
+            "password":"1111"
+        }
+    else:
+        user_info = {
+            "user_id":datas["user"]["id"],
+            "name":datas["user"]["email"],
+            "alerm":"no data",
+            "sleep":"no data",
+            "password":"1111"
+        }
     print(user_info)
     alerm_time = user_info["alerm"]
     sleep_time = user_info["sleep"]
@@ -271,7 +281,7 @@ def buzzer_func():
 
 
 def update_info():
-    global user_info
+    global user_info, LED_PIN
     status = False
     while True:
         # if status != True and user_info != None:
@@ -287,7 +297,26 @@ def update_info():
             params = {
             })
             print(response.text)
-        time.sleep(60 * 60)
+            if(response.text != "{}"):
+                GPIO.output(LED_PIN, True)
+                time.sleep(1)
+                GPIO.output(LED_PIN, False)
+                time.sleep(1)
+                GPIO.output(LED_PIN, True)
+                time.sleep(1)
+                GPIO.output(LED_PIN, False)
+                time.sleep(1)
+                GPIO.output(LED_PIN, True)
+                time.sleep(1)
+                GPIO.output(LED_PIN, False)
+                time.sleep(1)
+                GPIO.output(LED_PIN, True)
+                time.sleep(1)
+                GPIO.output(LED_PIN, False)
+                time.sleep(1)
+                
+                
+        time.sleep(60*60)
 
 def post_sleep():
     global user_info
@@ -332,6 +361,7 @@ def loop():
     alerm_thread.start()
 
     user_info_thread = threading.Thread(target=update_info)
+    GPIO.setup(LED_PIN, GPIO.OUT)
     user_info_thread.start()
 
     servo.setup()
